@@ -1,4 +1,6 @@
 #pragma once
+#include "squid.h"
+#include <memory>
 namespace squid
 {
 class TcpService
@@ -13,5 +15,7 @@ class TcpService
     int listenFd = -1;
     int threadCount;
     int epollFd = -1;
+    std::shared_ptr<EventList> eventList;
+    EpollAcceptChannel channel;
 };
 } // namespace squid
