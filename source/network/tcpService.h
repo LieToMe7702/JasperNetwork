@@ -15,7 +15,7 @@ class TcpService
     int listenFd = -1;
     int threadCount;
     int epollFd = -1;
-    std::shared_ptr<EventList> eventList;
-    EpollAcceptChannel channel;
+    squid::EventList eventList;
+    squid::EpollAcceptChannel channel;
 };
 } // namespace squid

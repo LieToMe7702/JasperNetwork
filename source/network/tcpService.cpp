@@ -62,7 +62,7 @@ void squid::TcpService::Bind(int port)
     bzero(&hints, sizeof(hints));
     hints.ai_flags = AI_PASSIVE;
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_socktype = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
     if (tmp = getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &res), sharedRes.reset(res); tmp != 0)
     {
         ErrorUtility::LogError(SocketError::GetAddrInfo);
