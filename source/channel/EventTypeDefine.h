@@ -5,7 +5,7 @@
 
 namespace squid
 {
-using EpollEvent = std::function<void(Socket socket)>;
+using EpollEvent = std::function<void(const Socket &socket)>;
 enum class EventType
 {
     Read = EPOLLIN | EPOLLPRI,

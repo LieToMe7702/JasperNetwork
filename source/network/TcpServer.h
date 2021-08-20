@@ -26,7 +26,7 @@ class TcpServer
     void RegisterMessageReceiveEvent(MessageEvent, bool enable);
     void RegisterConnectionAcceptEvent(ConnectionEvent, bool enable);
     void RegisterConnectionCloseEvent(ConnectionEvent, bool enable);
-    void BuildNewConnection(Socket socket);
+    void BuildNewConnection(const Socket &socket);
 
   private:
     int listenFd = -1;

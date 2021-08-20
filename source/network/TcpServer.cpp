@@ -101,7 +101,7 @@ TcpServer::~TcpServer()
         close(epollFd);
     }
 }
-void TcpServer::BuildNewConnection(Socket socket)
+void TcpServer::BuildNewConnection(const Socket &socket)
 {
     Connection connection;
     connectionVec.push_back(std::move(connection));
