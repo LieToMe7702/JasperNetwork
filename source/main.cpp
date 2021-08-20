@@ -2,7 +2,7 @@
 
 int main(int, char **)
 {
-    squid::TcpService service;
+    squid::TcpServer service;
     service.Bind(8085);
     service.Run();
 }

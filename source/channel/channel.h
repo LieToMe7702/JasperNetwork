@@ -2,13 +2,10 @@
 #include <memory>
 #include <sys/epoll.h>
 #include <vector>
+#include "EventTypeDefine.h"
 namespace squid
 {
-enum class EventType
-{
-    Read = EPOLLIN | EPOLLPRI,
-    Write = EPOLLOUT,
-};
+
 typedef std::vector<epoll_event> EventList;
 
 class Channel

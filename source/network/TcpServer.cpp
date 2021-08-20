@@ -1,6 +1,7 @@
-#include "tcpService.h"
+#include "TcpServer.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <netdb.h>
@@ -14,7 +15,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 using namespace squid;
-void squid::TcpService::Run()
+void squid::TcpServer::Run()
 {
     if (listenFd == -1)
     {
@@ -32,7 +33,7 @@ void squid::TcpService::Run()
         ErrorUtility::LogError(SocketError::EpollAdd);
         return;
     }
-    
+
     epoll_wait(epollFd, nullptr, 1024, 10);
     struct sockaddr_in clientAddr;
     auto size = sizeof(clientAddr);
@@ -46,7 +47,7 @@ void squid::TcpService::Run()
         close(connFd);
     }
 }
-void squid::TcpService::SetSocketOption(int option, bool enable)
+void squid::TcpServer::SetSocketOption(int option, bool enable)
 {
     if (listenFd == -1)
     {
@@ -54,20 +55,22 @@ void squid::TcpService::SetSocketOption(int option, bool enable)
     }
     setsockopt(listenFd, SOL_SOCKET, option, &enable, sizeof(enable));
 }
-void squid::TcpService::Bind(int port)
+void squid::TcpServer::Bind(int port)
 {
     struct addrinfo hints, *res;
     auto tmp = 0;
-    std::shared_ptr<addrinfo> sharedRes;
     bzero(&hints, sizeof(hints));
     hints.ai_flags = AI_PASSIVE;
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
-    if (tmp = getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &res), sharedRes.reset(res); tmp != 0)
+    // hints.ai_socktype = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
+    hints.ai_socktype = SOCK_STREAM;
+    if (tmp = getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &res); tmp != 0)
     {
         ErrorUtility::LogError(SocketError::GetAddrInfo);
         return;
     }
+    std::shared_ptr<addrinfo> sharedRes{res};
+    res->ai_socktype |= (SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (listenFd = socket(res->ai_family, res->ai_socktype, res->ai_protocol); listenFd == -1)
     {
         ErrorUtility::LogError(SocketError::CreateSocket);
@@ -87,7 +90,7 @@ void squid::TcpService::Bind(int port)
     }
 }
 
-squid::TcpService::~TcpService()
+TcpServer::~TcpServer()
 {
     if (listenFd != -1)
     {
@@ -98,6 +101,38 @@ squid::TcpService::~TcpService()
         close(epollFd);
     }
 }
-squid::TcpService::TcpService(int threadCount) : threadCount(threadCount)
+void TcpServer::BuildNewConnection(Socket socket)
+{
+    Connection connection;
+    connectionVec.push_back(std::move(connection));
+}
+TcpServer::TcpServer(int threadCount) : threadCount(threadCount)
+{
+    connectionHandler.RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
+                                    EventType::Read);
+}
+void TcpServer::OnMessageReceive(Stream &stream)
+{
+}
+void TcpServer::OnConnectionAccept(Connection &connection)
+{
+}
+void TcpServer::OnMessageSend(Stream &stream)
+{
+}
+void TcpServer::OnConnectionClose(Connection &connection)
+{
+}
+void TcpServer::RegisterMessageSendEvent(MessageEvent, bool enable)
+{
+}
+
+void TcpServer::RegisterMessageReceiveEvent(MessageEvent, bool enable)
+{
+}
+void TcpServer::RegisterConnectionAcceptEvent(ConnectionEvent, bool enable)
+{
+}
+void TcpServer::RegisterConnectionCloseEvent(ConnectionEvent, bool enable)
 {
 }
