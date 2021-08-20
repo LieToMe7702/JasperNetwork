@@ -24,35 +24,38 @@ void squid::TcpServer::Run()
     {
         return;
     }
-    struct epoll_event event;
-    bzero(&event, sizeof(event));
-    if (epollFd = epoll_create1(EPOLL_CLOEXEC); epollFd == -1)
-    {
-        ErrorUtility::LogError(SocketError::EpollCreate);
-        return;
-    }
-    event.events = static_cast<uint32_t>(EventType::Read);
-    if (auto res = epoll_ctl(epollFd, EPOLL_CTL_ADD, listenFd, &event); res == -1)
-    {
-        ErrorUtility::LogError(SocketError::EpollAdd);
-        return;
-    }
+    baseEventLoop.Loop();
+    /*
+     if (epollFd = epoll_create1(EPOLL_CLOEXEC); epollFd == -1)
+     {
+         ErrorUtility::LogError(SocketError::EpollCreate);
+         return;
+     }
+     struct epoll_event event;
+     bzero(&event, sizeof(event));
 
-    struct sockaddr_in clientAddr;
-    auto size = sizeof(clientAddr);
-    char buf[1000];
-    std::vector<epoll_event> vec(20);
-    while (true)
-    {
-        if (epoll_wait(epollFd, &*vec.begin(), 1024, 10) > 0)
-        {
-            size = sizeof(clientAddr);
-            auto connFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr),
-                                 reinterpret_cast<socklen_t *>(&size));
-            std::cout << connFd << std::endl;
-            close(connFd);
-        }
-    }
+     event.events = static_cast<uint32_t>(EventType::Read);
+     if (auto res = epoll_ctl(epollFd, EPOLL_CTL_ADD, listenFd, &event); res == -1)
+     {
+         ErrorUtility::LogError(SocketError::EpollAdd);
+         return;
+     }
+
+     struct sockaddr_in clientAddr;
+     auto size = sizeof(clientAddr);
+     char buf[1000];
+     std::vector<epoll_event> vec(20);
+     while (true)
+     {
+         if (epoll_wait(epollFd, &*vec.begin(), 1024, 10) > 0)
+         {
+             size = sizeof(clientAddr);
+             auto connFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr),
+                                  reinterpret_cast<socklen_t *>(&size));
+             std::cout << connFd << std::endl;
+             close(connFd);
+         }
+     }*/
 }
 void squid::TcpServer::SetSocketOption(int option, bool enable)
 {
@@ -95,6 +98,10 @@ void squid::TcpServer::Bind(int port)
         ErrorUtility::LogError(SocketError::ListenScoket);
         return;
     }
+
+    connectionHandler->RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
+                                     EventType::Read);
+    baseEventLoop.RegisterEventHandler(connectionHandler, listenFd);
 }
 
 TcpServer::~TcpServer()
@@ -121,10 +128,8 @@ void TcpServer::BuildNewConnection(int fd)
     }
     connectionVec.emplace_back(clientAddr);
 }
-TcpServer::TcpServer(int threadCount) : threadCount(threadCount)
+TcpServer::TcpServer(int threadCount) : threadCount(threadCount), connectionHandler(new EventHandler)
 {
-    connectionHandler.RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
-                                    EventType::Read);
 }
 void TcpServer::OnMessageReceive(Stream &stream)
 {

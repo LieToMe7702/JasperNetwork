@@ -1,8 +1,9 @@
 #pragma once
 #include "Connection.h"
-#include "Socket.h"
 #include "Stream.h"
-#include "squid.h"
+#include "channel/EventHandler.h"
+#include "loop/EventLoop.h"
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -32,9 +33,10 @@ class TcpServer
     int listenFd = -1;
     int threadCount;
     int epollFd = -1;
-    squid::EventList eventList;
-    squid::EpollAcceptChannel channel;
-    squid::EventHandler connectionHandler;
+    // squid::EventList eventList;
+    // squid::EpollAcceptChannel channel;
+    std::shared_ptr<squid::EventHandler> connectionHandler;
     std::vector<Connection> connectionVec;
+    squid::EventLoop baseEventLoop;
 };
 } // namespace squid
