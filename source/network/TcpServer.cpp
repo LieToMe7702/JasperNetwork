@@ -1,4 +1,6 @@
 #include "TcpServer.h"
+#include "channel/EventTypeDefine.h"
+#include "error/errorUtility.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
 #include <functional>
@@ -14,6 +16,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <vector>
 using namespace squid;
 void squid::TcpServer::Run()
 {
@@ -28,23 +31,27 @@ void squid::TcpServer::Run()
         ErrorUtility::LogError(SocketError::EpollCreate);
         return;
     }
-    if (auto res = epoll_ctl(listenFd, EPOLL_CTL_ADD, epollFd, &event); res == -1)
+    event.events = static_cast<uint32_t>(EventType::Read);
+    if (auto res = epoll_ctl(epollFd, EPOLL_CTL_ADD, listenFd, &event); res == -1)
     {
         ErrorUtility::LogError(SocketError::EpollAdd);
         return;
     }
 
-    epoll_wait(epollFd, nullptr, 1024, 10);
     struct sockaddr_in clientAddr;
     auto size = sizeof(clientAddr);
     char buf[1000];
+    std::vector<epoll_event> vec(20);
     while (true)
     {
-        size = sizeof(clientAddr);
-        auto connFd =
-            accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), reinterpret_cast<socklen_t *>(&size));
-        std::cout << connFd << std::endl;
-        close(connFd);
+        if (epoll_wait(epollFd, &*vec.begin(), 1024, 10) > 0)
+        {
+            size = sizeof(clientAddr);
+            auto connFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr),
+                                 reinterpret_cast<socklen_t *>(&size));
+            std::cout << connFd << std::endl;
+            close(connFd);
+        }
     }
 }
 void squid::TcpServer::SetSocketOption(int option, bool enable)
@@ -101,10 +108,18 @@ TcpServer::~TcpServer()
         close(epollFd);
     }
 }
-void TcpServer::BuildNewConnection(const Socket &socket)
+void TcpServer::BuildNewConnection(int fd)
 {
-    Connection connection;
-    connectionVec.push_back(std::move(connection));
+    struct sockaddr_in clientAddr;
+    auto size = sizeof(clientAddr);
+    auto connFd =
+        accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), reinterpret_cast<socklen_t *>(&size));
+    if (connFd == -1)
+    {
+        ErrorUtility::LogError(SocketError::AcceptSocket);
+        return;
+    }
+    connectionVec.emplace_back(clientAddr);
 }
 TcpServer::TcpServer(int threadCount) : threadCount(threadCount)
 {
