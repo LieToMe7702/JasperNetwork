@@ -1,5 +1,5 @@
 #include "TcpServer.h"
-#include "channel/EventTypeDefine.h"
+#include "channel/EventTypeUtility.h"
 #include "error/errorUtility.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>

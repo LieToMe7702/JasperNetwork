@@ -1,6 +1,7 @@
 #include "EventLoop.h"
 #include "error/errorUtility.h"
 #include <sys/epoll.h>
+#include <sys/poll.h>
 #include <unistd.h>
 #include <utility/squidUtility.h>
 using namespace squid;
@@ -12,7 +13,7 @@ void EventLoop::CreateEpollFd()
         return;
     }
 }
-EventLoop::EventLoop() : epollEventCollectVec(100)
+EventLoop::EventLoop() : epollEventCollectVec(100), epollFd(-1)
 {
     CreateEpollFd();
 }
@@ -27,9 +28,28 @@ void EventLoop::GetActiveFds(int num)
     {
         // activeFdVec.push_back(it.data.fd);
         auto fd = it.data.fd;
+        auto type = it.events;
         if (auto it2 = eventHanderDict.find(fd); it2 != eventHanderDict.end())
         {
-            it2->second->Handle(it.events, fd);
+            auto &handler = it2->second;
+            if ((type & POLLHUP) && !(type & POLLIN))
+            {
+                handler->Handle(EventType::Close, fd);
+            }
+            if ((type & (POLLERR | POLLNVAL)))
+            {
+                handler->Handle(EventType::Error, fd);
+                // eventHanderDict.erase(it2);
+            }
+            if ((type & (POLLIN | POLLPRI | POLLRDHUP)))
+            {
+                handler->Handle(EventType::Read, fd);
+            }
+            if ((type & (POLLOUT)))
+            {
+                handler->Handle(EventType::Write, fd);
+            }
+            // it2->second->Handle(it.events, fd);
         }
     }
     if (num == epollEventCollectVec.size())
@@ -62,6 +82,7 @@ void EventLoop::Loop()
         }
     }
 }
+
 void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int fd, bool enable)
 {
     struct epoll_event event;
@@ -79,7 +100,11 @@ void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int 
         opt = eventHanderDict.contains(fd) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
         eventHanderDict[fd] = handler;
     }
-    event.events = static_cast<uint32_t>(EventType::Read);
+    auto dict = handler->GetEventType();
+    for (auto it : dict)
+    {
+        event.events |= EventTypeUtility::EventTypeToEpollEvents(it.first);
+    }
     if (opt == 0)
     {
         return;

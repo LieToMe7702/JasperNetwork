@@ -1,8 +1,8 @@
 #pragma once
+#include "EventTypeUtility.h"
 #include <memory>
 #include <sys/epoll.h>
 #include <vector>
-#include "EventTypeDefine.h"
 namespace squid
 {
 

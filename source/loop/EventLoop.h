@@ -17,7 +17,7 @@ class EventLoop
 
   private:
     std::unordered_map<int, std::shared_ptr<EventHandler>> eventHanderDict;
-    int epollFd = -1;
+    int epollFd;
     std::vector<int> activeFdVec;
     void GetActiveFds(int num);
     void HandleActiveFds();
