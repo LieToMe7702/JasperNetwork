@@ -101,7 +101,7 @@ void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int 
         eventHanderDict[fd] = handler;
     }
     auto dict = handler->GetEventType();
-    for (auto it : dict)
+    for (auto &it : dict)
     {
         event.events |= EventTypeUtility::EventTypeToEpollEvents(it.first);
     }

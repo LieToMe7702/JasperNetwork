@@ -3,10 +3,16 @@
 #include "utility/squidUtility.h"
 #include <utility>
 using namespace squid;
-void EventHandler::RegisterEvent(EpollEvent event, EventType type)
+void EventHandler::RegisterEvent(const EpollEvent &event, EventType type)
 {
     auto &list = eventDict[type];
-    list.push_back(std::forward<EpollEvent>(event));
+    list.emplace_back(event);
+}
+
+void EventHandler::RegisterEvent(EpollEvent &&event, EventType type)
+{
+    auto &list = eventDict[type];
+    list.emplace_back(std::move(event));
 }
 
 void EventHandler::Handle(EventType eventType, int socketFd)

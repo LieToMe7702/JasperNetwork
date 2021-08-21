@@ -10,7 +10,8 @@ using EventDictType = std::unordered_map<EventType, std::vector<EpollEvent>>;
 class EventHandler /*: public std::enable_shared_from_this<EventHandler>*/
 {
   public:
-    void RegisterEvent(EpollEvent event, EventType type);
+    void RegisterEvent(const EpollEvent &event, EventType type);
+    void RegisterEvent(EpollEvent &&event, EventType type);
     void Handle(EventType eventType, int socketFd);
     const EventDictType &GetEventType();
 

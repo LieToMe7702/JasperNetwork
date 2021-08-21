@@ -1,6 +1,7 @@
 #include "TcpServer.h"
 #include "channel/EventTypeUtility.h"
 #include "error/errorUtility.h"
+#include "fmt/core.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
 #include <functional>
@@ -24,6 +25,7 @@ void squid::TcpServer::Run()
     {
         return;
     }
+    fmt::print("Begin Run\n");
     baseEventLoop.Loop();
     /*
      if (epollFd = epoll_create1(EPOLL_CLOEXEC); epollFd == -1)
@@ -102,6 +104,7 @@ void squid::TcpServer::Bind(int port)
     connectionHandler->RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
                                      EventType::Read);
     baseEventLoop.RegisterEventHandler(connectionHandler, listenFd);
+    fmt::print("Bind succ\n");
 }
 
 TcpServer::~TcpServer()
@@ -126,7 +129,8 @@ void TcpServer::BuildNewConnection(int fd)
         ErrorUtility::LogError(SocketError::AcceptSocket);
         return;
     }
-    connectionVec.emplace_back(clientAddr);
+    Connection connection(clientAddr);
+    connectionVec.push_back(std::move(connection));
 }
 TcpServer::TcpServer(int threadCount) : threadCount(threadCount), connectionHandler(new EventHandler)
 {
