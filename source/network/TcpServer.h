@@ -1,6 +1,7 @@
 #pragma once
 #include "Connection.h"
 #include "Stream.h"
+#include "TcpService.h"
 #include "channel/EventHandler.h"
 #include "loop//EventLoopThreadPool.h"
 #include "loop/EventLoop.h"
@@ -10,9 +11,7 @@
 #include <vector>
 namespace squid
 {
-using MessageEvent = std::function<void(Stream &stream)>;
-using ConnectionEvent = std::function<void(Connection &stream)>;
-class TcpServer
+class TcpServer : public TcpService
 {
   public:
     void Run();
@@ -20,15 +19,16 @@ class TcpServer
     void SetSocketOption(int option, bool enable);
     ~TcpServer();
     TcpServer(int threadCount = 0);
-    void OnMessageReceive(Stream &stream);
-    void OnMessageSend(Stream &stream);
-    void OnConnectionAccept(Connection &connection);
-    void OnConnectionClose(Connection &connection);
-    void RegisterMessageSendEvent(MessageEvent, bool enable);
-    void RegisterMessageReceiveEvent(MessageEvent, bool enable);
-    void RegisterConnectionAcceptEvent(ConnectionEvent, bool enable);
-    void RegisterConnectionCloseEvent(ConnectionEvent, bool enable);
+
     void BuildNewConnection(const int fd);
+    virtual void OnMessageReceive(Stream &stream) override;
+    virtual void OnMessageSend(Stream &stream) override;
+    virtual void OnConnectionAccept(Connection &connection) override;
+    virtual void OnConnectionClose(Connection &connection) override;
+    virtual void RegisterMessageSendEvent(MessageEvent, bool enable) override;
+    virtual void RegisterMessageReceiveEvent(MessageEvent, bool enable) override;
+    virtual void RegisterConnectionAcceptEvent(ConnectionEvent, bool enable) override;
+    virtual void RegisterConnectionCloseEvent(ConnectionEvent, bool enable) override;
 
   private:
     int listenFd;
