@@ -121,7 +121,7 @@ void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int 
     }
 }
 
-void EventLoop::RunInLoop(std::function<void()> func)
+void EventLoop::RunOnceInLoop(std::function<void()> func)
 {
     if (IsInLoopThread())
     {
@@ -129,11 +129,11 @@ void EventLoop::RunInLoop(std::function<void()> func)
     }
     else
     {
-        QueueInLoop(std::move(func));
+        QueueToRunOnceInLoop(std::move(func));
     }
 }
 
-void EventLoop::QueueInLoop(std::function<void()> func)
+void EventLoop::QueueToRunOnceInLoop(std::function<void()> func)
 {
     std::unique_lock lock(_waitingFuncsLock);
     _waitingFuncs.emplace_back(std::move(func));
@@ -141,5 +141,6 @@ void EventLoop::QueueInLoop(std::function<void()> func)
 
 bool EventLoop::IsInLoopThread() const
 {
+    // return true;
     return _threadId == std::this_thread::get_id();
 }

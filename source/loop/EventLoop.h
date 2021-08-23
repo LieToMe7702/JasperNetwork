@@ -7,14 +7,14 @@
 #include <vector>
 namespace squid
 {
-class EventLoop
+class EventLoop : public std::enable_shared_from_this<EventLoop>
 {
   public:
     void RegisterEventHandler(std::shared_ptr<EventHandler> handler, int fd, bool enable = true);
     void Loop();
     void CreateEpollFd();
-    void RunInLoop(std::function<void()> func);
-    void QueueInLoop(std::function<void()> func);
+    void RunOnceInLoop(std::function<void()> func);
+    void QueueToRunOnceInLoop(std::function<void()> func);
     EventLoop();
     ~EventLoop();
 

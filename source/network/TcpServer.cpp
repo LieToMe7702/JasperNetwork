@@ -26,7 +26,7 @@ void squid::TcpServer::Run()
         return;
     }
     fmt::print("Begin Run\n");
-    baseEventLoop.Loop();
+    baseEventLoop->Loop();
     /*
      if (epollFd = epoll_create1(EPOLL_CLOEXEC); epollFd == -1)
      {
@@ -100,10 +100,11 @@ void squid::TcpServer::Bind(int port)
         ErrorUtility::LogError(SocketError::ListenScoket);
         return;
     }
-    baseEventLoop.RunInLoop([this]() {
+
+    baseEventLoop->RunOnceInLoop([this]() {
         connectionHandler->RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
                                          EventType::Read);
-        baseEventLoop.RegisterEventHandler(connectionHandler, listenFd);
+        baseEventLoop->RegisterEventHandler(connectionHandler, listenFd);
     });
 
     fmt::print("Bind succ\n");
@@ -131,10 +132,13 @@ void TcpServer::BuildNewConnection(int fd)
         ErrorUtility::LogError(SocketError::AcceptSocket);
         return;
     }
-    Connection connection(clientAddr);
+    auto loop = _eventLoopThreadPool.GetLoop();
+    Connection connection(clientAddr, fd, loop);
     connectionVec.emplace_back(std::move(connection));
 }
-TcpServer::TcpServer(int threadCount) : threadCount(threadCount), connectionHandler(new EventHandler)
+TcpServer::TcpServer(int threadCount)
+    : threadCount(threadCount), connectionHandler(new EventHandler), _eventLoopThreadPool(baseEventLoop), listenFd(-1),
+      epollFd(-1), baseEventLoop(new EventLoop)
 {
 }
 void TcpServer::OnMessageReceive(Stream &stream)

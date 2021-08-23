@@ -2,6 +2,7 @@
 #include "Connection.h"
 #include "Stream.h"
 #include "channel/EventHandler.h"
+#include "loop//EventLoopThreadPool.h"
 #include "loop/EventLoop.h"
 #include <functional>
 #include <memory>
@@ -30,13 +31,14 @@ class TcpServer
     void BuildNewConnection(const int fd);
 
   private:
-    int listenFd = -1;
+    int listenFd;
     int threadCount;
-    int epollFd = -1;
+    int epollFd;
     // squid::EventList eventList;
     // squid::EpollAcceptChannel channel;
     std::shared_ptr<squid::EventHandler> connectionHandler;
     std::vector<Connection> connectionVec;
-    squid::EventLoop baseEventLoop;
+    std::shared_ptr<squid::EventLoop> baseEventLoop;
+    squid::EventLoopThreadPool _eventLoopThreadPool;
 };
 } // namespace squid
