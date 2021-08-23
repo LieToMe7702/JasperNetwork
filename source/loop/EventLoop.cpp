@@ -1,7 +1,9 @@
 #include "EventLoop.h"
 #include "error/errorUtility.h"
+#include <mutex>
 #include <sys/epoll.h>
 #include <sys/poll.h>
+#include <thread>
 #include <unistd.h>
 #include <utility/squidUtility.h>
 using namespace squid;
@@ -13,7 +15,7 @@ void EventLoop::CreateEpollFd()
         return;
     }
 }
-EventLoop::EventLoop() : epollEventCollectVec(100), epollFd(-1)
+EventLoop::EventLoop() : epollEventCollectVec(100), epollFd(-1), _threadId(std::this_thread::get_id())
 {
     CreateEpollFd();
 }
@@ -23,10 +25,23 @@ EventLoop::~EventLoop()
 }
 void EventLoop::GetActiveFds(int num)
 {
-    // activeFdVec.clear();
-    for (auto &it : epollEventCollectVec)
+    activeFdVec.clear();
+    auto size = epollEventCollectVec.size();
+    for (int i = 0; i < num; i++)
     {
-        // activeFdVec.push_back(it.data.fd);
+        auto &it = epollEventCollectVec[i];
+        activeFdVec.emplace_back(std::move(it));
+    }
+    if (num == size)
+    {
+        epollEventCollectVec.resize(num * 3 / 2);
+    }
+}
+
+void EventLoop::HandleActiveFds()
+{
+    for (auto it : activeFdVec)
+    {
         auto fd = it.data.fd;
         auto type = it.events;
         if (auto it2 = eventHanderDict.find(fd); it2 != eventHanderDict.end())
@@ -39,7 +54,6 @@ void EventLoop::GetActiveFds(int num)
             if ((type & (POLLERR | POLLNVAL)))
             {
                 handler->Handle(EventType::Error, fd);
-                // eventHanderDict.erase(it2);
             }
             if ((type & (POLLIN | POLLPRI | POLLRDHUP)))
             {
@@ -49,37 +63,28 @@ void EventLoop::GetActiveFds(int num)
             {
                 handler->Handle(EventType::Write, fd);
             }
-            // it2->second->Handle(it.events, fd);
         }
     }
-    if (num == epollEventCollectVec.size())
-    {
-        epollEventCollectVec.resize(num * 3 / 2);
-    }
-}
-
-void EventLoop::HandleActiveFds()
-{
 }
 void EventLoop::Loop()
 {
-
-    struct sockaddr_in clientAddr;
-    auto size = sizeof(clientAddr);
-    char buf[1000];
     while (true)
     {
         if (auto num = epoll_wait(epollFd, &*epollEventCollectVec.begin(), epollEventCollectVec.size(), 10); num > 0)
         {
             GetActiveFds(num);
-            // HandleActiveFds();
-            /*
-            size = sizeof(clientAddr);
-            auto connFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr),
-                                 reinterpret_cast<socklen_t *>(&size));
-            std::cout << connFd << std::endl;
-            close(connFd);*/
         }
+        HandleActiveFds();
+        HandleWaitingFuncs();
+    }
+}
+
+void EventLoop::HandleWaitingFuncs()
+{
+    std::unique_lock lock(_waitingFuncsLock);
+    for (auto &it : _waitingFuncs)
+    {
+        it();
     }
 }
 
@@ -114,4 +119,27 @@ void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int 
         ErrorUtility::LogError(SocketError::EpollAdd);
         return;
     }
+}
+
+void EventLoop::RunInLoop(std::function<void()> func)
+{
+    if (IsInLoopThread())
+    {
+        func();
+    }
+    else
+    {
+        QueueInLoop(std::move(func));
+    }
+}
+
+void EventLoop::QueueInLoop(std::function<void()> func)
+{
+    std::unique_lock lock(_waitingFuncsLock);
+    _waitingFuncs.emplace_back(std::move(func));
+}
+
+bool EventLoop::IsInLoopThread() const
+{
+    return _threadId == std::this_thread::get_id();
 }

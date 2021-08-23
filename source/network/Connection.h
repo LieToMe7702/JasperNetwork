@@ -1,5 +1,8 @@
 #pragma once
+#include "loop/EventLoop.h"
 #include <arpa/inet.h>
+#include <memory>
+
 namespace squid
 {
 class Connection
@@ -8,7 +11,9 @@ class Connection
     Connection(sockaddr_in &sockAddr);
 
   private:
-    int port;
-    uint32_t addr;
+    int _port;
+    uint32_t _addr;
+    int _fd;
+    std::weak_ptr<EventLoop> _runLoop;
 };
 } // namespace squid

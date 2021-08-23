@@ -100,10 +100,12 @@ void squid::TcpServer::Bind(int port)
         ErrorUtility::LogError(SocketError::ListenScoket);
         return;
     }
+    baseEventLoop.RunInLoop([this]() {
+        connectionHandler->RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
+                                         EventType::Read);
+        baseEventLoop.RegisterEventHandler(connectionHandler, listenFd);
+    });
 
-    connectionHandler->RegisterEvent(std::bind(&TcpServer::BuildNewConnection, this, std::placeholders::_1),
-                                     EventType::Read);
-    baseEventLoop.RegisterEventHandler(connectionHandler, listenFd);
     fmt::print("Bind succ\n");
 }
 
@@ -130,7 +132,7 @@ void TcpServer::BuildNewConnection(int fd)
         return;
     }
     Connection connection(clientAddr);
-    connectionVec.push_back(std::move(connection));
+    connectionVec.emplace_back(std::move(connection));
 }
 TcpServer::TcpServer(int threadCount) : threadCount(threadCount), connectionHandler(new EventHandler)
 {
