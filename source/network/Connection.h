@@ -24,6 +24,7 @@ class Connection /*: public TcpService*/
     int _fd;
     std::shared_ptr<EventLoop> _runLoop;
     std::shared_ptr<EventHandler> _ioHandler;
-    BufStream _bufStream;
+    BufStream _inputStream;
+    BufStream _outputStream;
 };
 } // namespace squid
