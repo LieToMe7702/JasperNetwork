@@ -2,6 +2,7 @@
 #include "channel/EventTypeUtility.h"
 #include "error/errorUtility.h"
 #include "fmt/core.h"
+#include <algorithm>
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
 #include <functional>
@@ -17,6 +18,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <utility/squidUtility.h>
 #include <vector>
 using namespace squid;
 void squid::TcpServer::Run()
@@ -133,36 +135,56 @@ void TcpServer::BuildNewConnection(int fd)
         return;
     }
     auto loop = _eventLoopThreadPool.GetLoop();
-    Connection connection(clientAddr, fd, loop);
-    connectionVec.emplace_back(std::move(connection));
+    std::shared_ptr<Connection> connection(new Connection(clientAddr, fd, loop));
+    for (auto &it : _messageSendEvent)
+    {
+        connection->RegisterMessageSendEvent(it);
+    }
+    for (auto &it : _messageReceiveEvent)
+    {
+        connection->RegisterMessageReceiveEvent(it);
+    }
+    connectionMap[fd] = connection;
+    OnConnectionAccept(*connection);
+}
+void TcpServer::CloseConnection(int fd)
+{
 }
 TcpServer::TcpServer(int threadCount)
     : threadCount(threadCount), connectionHandler(new EventHandler), _eventLoopThreadPool(baseEventLoop), listenFd(-1),
       epollFd(-1), baseEventLoop(new EventLoop)
 {
 }
-void TcpServer::OnMessageReceive(Stream &stream)
-{
-}
+
 void TcpServer::OnConnectionAccept(Connection &connection)
 {
-}
-void TcpServer::OnMessageSend(Stream &stream)
-{
-}
-void TcpServer::OnConnectionClose(Connection &connection)
-{
-}
-void TcpServer::RegisterMessageSendEvent(MessageEvent, bool enable)
-{
+    for (auto &it : _connectAcceptEvents)
+    {
+        it(connection);
+    }
 }
 
-void TcpServer::RegisterMessageReceiveEvent(MessageEvent, bool enable)
+void TcpServer::OnConnectionClose(Connection &connection)
 {
+    for (auto &it : _connectCloseEvents)
+    {
+        it(connection);
+    }
 }
-void TcpServer::RegisterConnectionAcceptEvent(ConnectionEvent, bool enable)
+void TcpServer::RegisterMessageSendEvent(MessageEvent event)
 {
+    _messageSendEvent.emplace_back(event);
 }
-void TcpServer::RegisterConnectionCloseEvent(ConnectionEvent, bool enable)
+
+void TcpServer::RegisterMessageReceiveEvent(MessageEvent event)
 {
+    _messageReceiveEvent.emplace_back(event);
+}
+void TcpServer::RegisterConnectionAcceptEvent(ConnectionEvent event)
+{
+    _connectAcceptEvents.emplace_back(event);
+}
+void TcpServer::RegisterConnectionCloseEvent(ConnectionEvent event)
+{
+    _connectCloseEvents.emplace_back(event);
 }

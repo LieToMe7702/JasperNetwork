@@ -21,7 +21,7 @@ EventLoop::EventLoop() : epollEventCollectVec(100), epollFd(-1), _threadId(std::
 }
 EventLoop::~EventLoop()
 {
-    Utility::CloseFd(epollFd);
+    CommonUtility::CloseFd(epollFd);
 }
 void EventLoop::GetActiveFds(int num)
 {
