@@ -25,7 +25,32 @@ void EventHandler::Handle(EventType eventType, int socketFd)
         func(socketFd);
     }
 }
-const EventDictType &EventHandler::GetEventType()
+
+const int EventHandler::readEventType = POLLIN | POLLPRI;
+const int EventHandler::writeEventType = POLLOUT;
+
+void EventHandler::EnableReadEvent(bool enable)
 {
-    return eventDict;
+    if (enable)
+        _enableEventType |= readEventType;
+    else
+    {
+        _enableEventType &= ~readEventType;
+    }
+}
+void EventHandler::EnableWriteEvent(bool enable)
+{
+    if (enable)
+    {
+        _enableEventType |= writeEventType;
+    }
+    else
+    {
+        _enableEventType &= ~writeEventType;
+    }
+}
+
+int EventHandler::GetEnabledEventType() const
+{
+    return _enableEventType;
 }

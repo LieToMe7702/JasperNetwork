@@ -105,11 +105,7 @@ void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int 
         opt = eventHanderDict.contains(fd) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
         eventHanderDict[fd] = handler;
     }
-    auto dict = handler->GetEventType();
-    for (auto &it : dict)
-    {
-        event.events |= EventTypeUtility::EventTypeToEpollEvents(it.first);
-    }
+    event.events |= handler->GetEnabledEventType();
     if (opt == 0)
     {
         return;

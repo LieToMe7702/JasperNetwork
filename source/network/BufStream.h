@@ -17,14 +17,20 @@ class BufStream
     void Write(std::byte *bytes, size_t len);
     void SetPos(size_t pos);
     size_t Pos() const;
-    void SetLength(size_t len);
-    size_t Length();
+    size_t Length() const;
     bool HaveReadableData();
+    size_t ReadableSize();
+    void Clear();
+    std::byte *GetByteArray();
 
   private:
     std::vector<std::byte> _vec;
-    size_t _pos;
-    int _length;
-    void EnsureCapacity();
+    size_t _readIndex;
+    size_t _writeIndex;
+    void EnsureCapacity(size_t len);
+    void SetLength(size_t len);
+    void FillGap();
+    void AutoResize(size_t len);
+    thread_local static BufStream commonBufStream;
 };
 } // namespace squid

@@ -1,5 +1,5 @@
 #include "TcpServer.h"
-#include "channel/EventTypeUtility.h"
+#include "channel/EventType.h"
 #include "error/errorUtility.h"
 #include "fmt/core.h"
 #include <algorithm>
@@ -29,37 +29,6 @@ void squid::TcpServer::Run()
     }
     fmt::print("Begin Run\n");
     baseEventLoop->Loop();
-    /*
-     if (epollFd = epoll_create1(EPOLL_CLOEXEC); epollFd == -1)
-     {
-         ErrorUtility::LogError(SocketError::EpollCreate);
-         return;
-     }
-     struct epoll_event event;
-     bzero(&event, sizeof(event));
-
-     event.events = static_cast<uint32_t>(EventType::Read);
-     if (auto res = epoll_ctl(epollFd, EPOLL_CTL_ADD, listenFd, &event); res == -1)
-     {
-         ErrorUtility::LogError(SocketError::EpollAdd);
-         return;
-     }
-
-     struct sockaddr_in clientAddr;
-     auto size = sizeof(clientAddr);
-     char buf[1000];
-     std::vector<epoll_event> vec(20);
-     while (true)
-     {
-         if (epoll_wait(epollFd, &*vec.begin(), 1024, 10) > 0)
-         {
-             size = sizeof(clientAddr);
-             auto connFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr),
-                                  reinterpret_cast<socklen_t *>(&size));
-             std::cout << connFd << std::endl;
-             close(connFd);
-         }
-     }*/
 }
 void squid::TcpServer::SetSocketOption(int option, bool enable)
 {
@@ -154,6 +123,7 @@ TcpServer::TcpServer(int threadCount)
     : threadCount(threadCount), connectionHandler(new EventHandler), _eventLoopThreadPool(baseEventLoop), listenFd(-1),
       epollFd(-1), baseEventLoop(new EventLoop)
 {
+    connectionHandler->EnableReadEvent(true);
 }
 
 void TcpServer::OnConnectionAccept(Connection &connection)

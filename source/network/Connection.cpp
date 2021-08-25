@@ -1,5 +1,5 @@
 #include "Connection.h"
-#include "channel/EventTypeUtility.h"
+#include "channel/EventType.h"
 #include <functional>
 using namespace squid;
 
@@ -8,6 +8,7 @@ Connection::Connection(sockaddr_in &sockAddr, int fd, std::shared_ptr<EventLoop>
 {
     _ioHandler->RegisterEvent(std::bind(&Connection::OnMessageReceiveFd, this, std::placeholders::_1), EventType::Read);
     _ioHandler->RegisterEvent(std::bind(&Connection::OnMessageSendFd, this, std::placeholders::_1), EventType::Write);
+    _ioHandler->EnableReadEvent(true);
 }
 void Connection::OnMessageReceiveFd(int fd)
 {
