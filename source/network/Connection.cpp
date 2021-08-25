@@ -12,6 +12,8 @@ Connection::Connection(sockaddr_in &sockAddr, int fd, std::shared_ptr<EventLoop>
 }
 void Connection::OnMessageReceiveFd(int fd)
 {
+    _inputStream.ReadByFd(fd);
+    OnMessageReceive(_inputStream);
 }
 void Connection::OnMessageReceive(BufStream &stream)
 {
