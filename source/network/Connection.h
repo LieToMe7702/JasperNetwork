@@ -8,6 +8,12 @@
 
 namespace squid
 {
+enum class ConnectionState
+{
+    Connected,
+    Disconnection,
+    Disconnected,
+};
 class Connection /*: public TcpService*/
 {
   public:
@@ -16,11 +22,18 @@ class Connection /*: public TcpService*/
     void OnMessageReceive(BufStream &stream);
     void OnMessageSendFd(int fd);
     void OnMessageSend();
-    void RegisterMessageSendEvent(VoidEvent);
-    void RegisterMessageReceiveEvent(MessageEvent);
-    void Send(char *data, size_t len);
+    void OnCloseFd(int fd);
+
+    void RegisterMessageSendEvent(ConnectionEvent);
+    void RegisterMessageReceiveEvent(MessageReceiveEvent);
+    void RegisterCloseEvent(ConnectionEvent);
+    void Send(const char *data, size_t len);
+    void Close();
+    int Fd() const;
+    void RegisterInLoop();
 
   private:
+    void CloseWrite();
     int _port;
     uint32_t _addr;
     int _fd;
@@ -28,7 +41,9 @@ class Connection /*: public TcpService*/
     std::shared_ptr<EventHandler> _ioHandler;
     BufStream _inputStream;
     BufStream _outputStream;
-    std::vector<VoidEvent> _messageSendEvent;
-    std::vector<MessageEvent> _messageReceiveEvent;
+    std::vector<ConnectionEvent> _messageSendEvent;
+    std::vector<MessageReceiveEvent> _messageReceiveEvent;
+    ConnectionState _connectionState;
+    std::vector<ConnectionEvent> _closeEvent;
 };
 } // namespace squid

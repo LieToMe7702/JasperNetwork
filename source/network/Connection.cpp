@@ -1,16 +1,30 @@
 #include "Connection.h"
 #include "channel/EventType.h"
+#include "network/TcpService.h"
 #include <algorithm>
 #include <functional>
 #include <string_view>
 using namespace squid;
 
 Connection::Connection(sockaddr_in &sockAddr, int fd, std::shared_ptr<EventLoop> loop)
-    : _port(sockAddr.sin_port), _addr(sockAddr.sin_addr.s_addr), _fd(fd), _runLoop(loop), _ioHandler(new EventHandler)
+    : _port(sockAddr.sin_port), _addr(sockAddr.sin_addr.s_addr), _fd(fd), _runLoop(loop), _ioHandler(new EventHandler),
+      _connectionState(ConnectionState::Connected)
 {
     _ioHandler->RegisterEvent(std::bind(&Connection::OnMessageReceiveFd, this, std::placeholders::_1), EventType::Read);
     _ioHandler->RegisterEvent(std::bind(&Connection::OnMessageSendFd, this, std::placeholders::_1), EventType::Write);
+    _ioHandler->RegisterEvent(std::bind(&Connection::OnCloseFd, this, std::placeholders::_1), EventType::Close);
     _ioHandler->EnableReadEvent(true);
+}
+void Connection::OnCloseFd(int fd)
+{
+    _runLoop->RunOnceInLoop([this, fd]() {
+        _connectionState = ConnectionState::Disconnected;
+        _runLoop->RegisterEventHandler(this->_ioHandler, fd, false);
+        for (auto &it : _closeEvent)
+        {
+            it(*this);
+        }
+    });
 }
 void Connection::OnMessageReceiveFd(int fd)
 {
@@ -21,8 +35,12 @@ void Connection::OnMessageReceive(BufStream &stream)
 {
     for (auto &it : _messageReceiveEvent)
     {
-        it(stream);
+        it(*this, stream);
     }
+}
+void Connection::RegisterInLoop()
+{
+    _runLoop->RunOnceInLoop([this]() { _runLoop->RegisterEventHandler(_ioHandler, _fd); });
 }
 void Connection::OnMessageSendFd(int fd)
 {
@@ -32,7 +50,12 @@ void Connection::OnMessageSendFd(int fd)
         if (_outputStream.Length() == 0)
         {
             _ioHandler->EnableWriteEvent(false);
+            _runLoop->RegisterEventHandler(_ioHandler, fd);
             OnMessageSend();
+            if (_connectionState == ConnectionState::Disconnection)
+            {
+                CloseWrite();
+            }
         }
     }
 }
@@ -40,26 +63,29 @@ void Connection::OnMessageSend()
 {
     for (auto &it : _messageSendEvent)
     {
-        it();
+        it(*this);
     }
 }
-
-void Connection::RegisterMessageSendEvent(VoidEvent event)
+void Connection::RegisterCloseEvent(ConnectionEvent event)
+{
+    _closeEvent.emplace_back(event);
+}
+void Connection::RegisterMessageSendEvent(ConnectionEvent event)
 {
     _messageSendEvent.emplace_back(event);
 }
-void Connection::RegisterMessageReceiveEvent(MessageEvent event)
+void Connection::RegisterMessageReceiveEvent(MessageReceiveEvent event)
 {
     _messageReceiveEvent.emplace_back(event);
 }
 
-void Connection::Send(char *data, size_t len)
+void Connection::Send(const char *data, size_t len)
 {
     if (_runLoop->IsInLoopThread())
     {
         _outputStream.Write(data, len);
         _ioHandler->EnableWriteEvent(true);
-        _runLoop->UpdateEventHandlerByFd(_fd);
+        _runLoop->RegisterEventHandler(_ioHandler, _fd);
     }
     else
     {
@@ -67,7 +93,29 @@ void Connection::Send(char *data, size_t len)
         _runLoop->RunOnceInLoop([str(std::move(str)), len, this]() mutable {
             _outputStream.Write(const_cast<char *>(str.data()), len);
             _ioHandler->EnableWriteEvent(true);
-            _runLoop->UpdateEventHandlerByFd(_fd);
+            _runLoop->RegisterEventHandler(_ioHandler, _fd);
         });
     }
+}
+
+void Connection::Close()
+{
+    _runLoop->RunOnceInLoop([this]() {
+        if (_connectionState == ConnectionState::Connected)
+        {
+            _connectionState = ConnectionState::Disconnection;
+        }
+        CloseWrite();
+    });
+}
+void Connection::CloseWrite()
+{
+    if (_ioHandler->IsWrite())
+    {
+        ::shutdown(_fd, SHUT_WR);
+    }
+}
+int Connection::Fd() const
+{
+    return _fd;
 }

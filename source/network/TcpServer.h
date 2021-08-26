@@ -11,7 +11,7 @@
 #include <vector>
 namespace squid
 {
-using ConnectionEvent = std::function<void(Connection &stream)>;
+// using ConnectionEvent = std::function<void(Connection &stream)>;
 
 class TcpServer /*: public TcpService*/
 {
@@ -27,8 +27,8 @@ class TcpServer /*: public TcpService*/
 
     void OnConnectionAccept(Connection &connection);
     void OnConnectionClose(Connection &connection);
-    void RegisterMessageSendEvent(VoidEvent);
-    void RegisterMessageReceiveEvent(MessageEvent);
+    void RegisterMessageSendEvent(ConnectionEvent);
+    void RegisterMessageReceiveEvent(MessageReceiveEvent);
     void RegisterConnectionAcceptEvent(ConnectionEvent);
     void RegisterConnectionCloseEvent(ConnectionEvent);
 
@@ -42,7 +42,7 @@ class TcpServer /*: public TcpService*/
     squid::EventLoopThreadPool _eventLoopThreadPool;
     std::vector<ConnectionEvent> _connectAcceptEvents;
     std::vector<ConnectionEvent> _connectCloseEvents;
-    std::vector<VoidEvent> _messageSendEvent;
-    std::vector<MessageEvent> _messageReceiveEvent;
+    std::vector<ConnectionEvent> _messageSendEvent;
+    std::vector<MessageReceiveEvent> _messageReceiveEvent;
 };
 } // namespace squid

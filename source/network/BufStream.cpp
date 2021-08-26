@@ -1,6 +1,7 @@
 #include "BufStream.h"
 #include <algorithm>
 #include <bits/types/struct_iovec.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <unistd.h>
@@ -41,13 +42,13 @@ void BufStream::EnsureCapacity(size_t len)
     AutoResize(len);
 }
 
-void BufStream::Write(char *bytes, size_t len)
+void BufStream::Write(const char *bytes, size_t len)
 {
-    auto res = reinterpret_cast<std::byte *>(bytes);
+    auto res = reinterpret_cast<const std::byte *>(bytes);
     Write(res, len);
 }
 
-void BufStream::Write(std::byte *bytes, size_t len)
+void BufStream::Write(const std::byte *bytes, size_t len)
 {
     EnsureCapacity(len);
     std::copy(bytes, bytes + len, _vec.begin() + _writeIndex);
@@ -111,13 +112,13 @@ std::byte *BufStream::GetByteArray()
 ssize_t BufStream::ReadFromFd(int fd)
 {
     struct iovec vec[2];
+    char extrabuf[65536];
     auto writeBytes = Capacity() - _writeIndex;
     vec[0].iov_base = GetByteArray() + Length();
     vec[0].iov_len = writeBytes;
-    auto commonBufArray = BufStream::commonBufStream;
-    vec[1].iov_base = commonBufArray;
-    vec[1].iov_len = sizeof(commonBufArray);
-    auto count = writeBytes < sizeof(commonBufArray) ? 2 : 1;
+    vec[1].iov_base = extrabuf;
+    vec[1].iov_len = sizeof(extrabuf);
+    auto count = writeBytes < vec[1].iov_len ? 2 : 1;
     auto readCount = readv(fd, vec, count);
     if (readCount < 0)
     {
@@ -130,13 +131,21 @@ ssize_t BufStream::ReadFromFd(int fd)
     else
     {
         _writeIndex = Capacity();
-        Write(commonBufArray, readCount - writeBytes);
+        Write(extrabuf, readCount - writeBytes);
     }
     return readCount;
 }
 ssize_t BufStream::WriteToFd(int fd)
 {
-    auto n = ::write(fd, GetByteArray(), Length());
+    std::string test{"<html>\
+<head><title>这是我的第一个html</title></head>\
+<body>\
+Hello World\
+</body>\
+</html>\
+"};
+    // auto n = ::write(fd, GetByteArray(), Length());
+    auto n = ::write(fd, test.c_str(), test.size());
     if (n > 0)
     {
         _readIndex += n;

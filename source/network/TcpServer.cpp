@@ -2,6 +2,7 @@
 #include "channel/EventType.h"
 #include "error/errorUtility.h"
 #include "fmt/core.h"
+#include "network/TcpService.h"
 #include <algorithm>
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
@@ -47,6 +48,7 @@ void squid::TcpServer::Bind(int port)
     hints.ai_family = AF_UNSPEC;
     // hints.ai_socktype = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
     hints.ai_socktype = SOCK_STREAM;
+
     if (tmp = getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &res); tmp != 0)
     {
         ErrorUtility::LogError(SocketError::GetAddrInfo);
@@ -102,7 +104,7 @@ void TcpServer::BuildNewConnection(int fd)
         return;
     }
     auto loop = _eventLoopThreadPool.GetLoop();
-    std::shared_ptr<Connection> connection(new Connection(clientAddr, fd, loop));
+    std::shared_ptr<Connection> connection(new Connection(clientAddr, connFd, loop));
     for (auto &it : _messageSendEvent)
     {
         connection->RegisterMessageSendEvent(it);
@@ -111,8 +113,13 @@ void TcpServer::BuildNewConnection(int fd)
     {
         connection->RegisterMessageReceiveEvent(it);
     }
-    connectionMap[fd] = connection;
+    for (auto &it : _connectCloseEvents)
+    {
+        connection->RegisterCloseEvent(it);
+    }
+    connectionMap[connFd] = connection;
     OnConnectionAccept(*connection);
+    connection->RegisterInLoop();
 }
 void TcpServer::CloseConnection(int fd)
 {
@@ -137,13 +144,15 @@ void TcpServer::OnConnectionClose(Connection &connection)
     {
         it(connection);
     }
+    auto fd = connection.Fd();
+    baseEventLoop->RunOnceInLoop([fd, this]() { connectionMap.erase(fd); });
 }
-void TcpServer::RegisterMessageSendEvent(VoidEvent event)
+void TcpServer::RegisterMessageSendEvent(ConnectionEvent event)
 {
     _messageSendEvent.emplace_back(event);
 }
 
-void TcpServer::RegisterMessageReceiveEvent(MessageEvent event)
+void TcpServer::RegisterMessageReceiveEvent(MessageReceiveEvent event)
 {
     _messageReceiveEvent.emplace_back(event);
 }

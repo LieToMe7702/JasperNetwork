@@ -14,8 +14,8 @@ class BufStream
     size_t Capacity() const;
     int Read(char *bytes, size_t len);
     int Read(std::byte *bytes, size_t len);
-    void Write(char *bytes, size_t len);
-    void Write(std::byte *bytes, size_t len);
+    void Write(const char *bytes, size_t len);
+    void Write(const std::byte *bytes, size_t len);
     void SetPos(size_t pos);
     size_t Pos() const;
     size_t Length() const;

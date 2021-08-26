@@ -54,3 +54,8 @@ int EventHandler::GetEnabledEventType() const
 {
     return _enableEventType;
 }
+
+bool EventHandler::IsWrite() const
+{
+    return _enableEventType & writeEventType;
+}

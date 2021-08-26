@@ -15,6 +15,7 @@ class EventHandler /*: public std::enable_shared_from_this<EventHandler>*/
     void Handle(EventType eventType, int socketFd);
     void EnableReadEvent(bool enable);
     void EnableWriteEvent(bool enable);
+    bool IsWrite() const;
     int GetEnabledEventType() const;
 
   private:

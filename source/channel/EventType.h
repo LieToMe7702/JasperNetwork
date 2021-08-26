@@ -1,5 +1,4 @@
 #pragma once
-#include "network/Socket.h"
 #include <functional>
 #include <memory>
 #include <sys/epoll.h>
