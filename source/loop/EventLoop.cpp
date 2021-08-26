@@ -112,13 +112,13 @@ void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int 
     int opt = 0;
     if (!enable)
     {
-        opt = eventHanderDict.contains(fd) ? EPOLL_CTL_DEL : 0;
+        opt = eventHanderDict.count(fd) > 0 ? EPOLL_CTL_DEL : 0;
 
         eventHanderDict.erase(fd);
     }
     else
     {
-        opt = eventHanderDict.contains(fd) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+        opt = eventHanderDict.count(fd) > 0 ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
         eventHanderDict[fd] = handler;
     }
     event.events |= handler->GetEnabledEventType();

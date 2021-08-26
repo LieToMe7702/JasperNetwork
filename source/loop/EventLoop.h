@@ -2,6 +2,7 @@
 #include "channel/squidChannel.h"
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <vector>

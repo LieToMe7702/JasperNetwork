@@ -35,6 +35,5 @@
 .vscode/*
 .cache
 build
-*.clang-format
 .idea
 cmake-build-debug

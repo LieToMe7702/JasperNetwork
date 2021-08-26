@@ -1,5 +1,6 @@
 #include "ProducerConsumer.h"
 #include "utility/squidUtility.h"
+#include <thread>
 using namespace squid;
 void ProducerConsumer::Test()
 {

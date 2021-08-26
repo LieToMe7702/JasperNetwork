@@ -13,7 +13,7 @@ aux_source_directory(./source/error DIR_SRCS)
 aux_source_directory(./source DIR_SRCS)
 add_subdirectory(./source/dependencies/fmt EXCLUDE_FROM_ALL)
 add_executable(squid ${DIR_SRCS})
-target_compile_features(squid PUBLIC cxx_std_20)
+target_compile_features(squid PUBLIC cxx_std_17)
 TARGET_LINK_LIBRARIES(squid
 pthread fmt-header-only
 )
