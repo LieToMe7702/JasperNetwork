@@ -27,7 +27,7 @@ class TcpServer /*: public TcpService*/
 
     void OnConnectionAccept(Connection &connection);
     void OnConnectionClose(Connection &connection);
-    void RegisterMessageSendEvent(MessageEvent);
+    void RegisterMessageSendEvent(VoidEvent);
     void RegisterMessageReceiveEvent(MessageEvent);
     void RegisterConnectionAcceptEvent(ConnectionEvent);
     void RegisterConnectionCloseEvent(ConnectionEvent);
@@ -42,7 +42,7 @@ class TcpServer /*: public TcpService*/
     squid::EventLoopThreadPool _eventLoopThreadPool;
     std::vector<ConnectionEvent> _connectAcceptEvents;
     std::vector<ConnectionEvent> _connectCloseEvents;
-    std::vector<MessageEvent> _messageSendEvent;
+    std::vector<VoidEvent> _messageSendEvent;
     std::vector<MessageEvent> _messageReceiveEvent;
 };
 } // namespace squid

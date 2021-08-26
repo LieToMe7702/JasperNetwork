@@ -11,12 +11,14 @@ class EventLoop : public std::enable_shared_from_this<EventLoop>
 {
   public:
     void RegisterEventHandler(std::shared_ptr<EventHandler> handler, int fd, bool enable = true);
+    void UpdateEventHandlerByFd(int fd);
     void Loop();
     void CreateEpollFd();
     void RunOnceInLoop(std::function<void()> func);
     void QueueToRunOnceInLoop(std::function<void()> func);
     EventLoop();
     ~EventLoop();
+    bool IsInLoopThread() const;
 
   private:
     std::unordered_map<int, std::shared_ptr<EventHandler>> eventHanderDict;
@@ -27,7 +29,6 @@ class EventLoop : public std::enable_shared_from_this<EventLoop>
     std::vector<epoll_event> epollEventCollectVec;
     std::vector<std::function<void()>> _waitingFuncs;
     std::mutex _waitingFuncsLock;
-    bool IsInLoopThread() const;
     void HandleWaitingFuncs();
     std::thread::id _threadId;
 };

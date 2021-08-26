@@ -3,6 +3,7 @@
 #include "TcpService.h"
 #include "loop/EventLoop.h"
 #include <arpa/inet.h>
+#include <cstddef>
 #include <memory>
 
 namespace squid
@@ -14,9 +15,10 @@ class Connection /*: public TcpService*/
     void OnMessageReceiveFd(int fd);
     void OnMessageReceive(BufStream &stream);
     void OnMessageSendFd(int fd);
-    void OnMessageSend(BufStream &stream);
-    void RegisterMessageSendEvent(MessageEvent);
+    void OnMessageSend();
+    void RegisterMessageSendEvent(VoidEvent);
     void RegisterMessageReceiveEvent(MessageEvent);
+    void Send(char *data, size_t len);
 
   private:
     int _port;
@@ -26,5 +28,7 @@ class Connection /*: public TcpService*/
     std::shared_ptr<EventHandler> _ioHandler;
     BufStream _inputStream;
     BufStream _outputStream;
+    std::vector<VoidEvent> _messageSendEvent;
+    std::vector<MessageEvent> _messageReceiveEvent;
 };
 } // namespace squid

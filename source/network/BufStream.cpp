@@ -1,7 +1,10 @@
 #include "BufStream.h"
 #include <algorithm>
 #include <bits/types/struct_iovec.h>
+#include <sys/socket.h>
 #include <sys/uio.h>
+#include <unistd.h>
+
 using namespace squid;
 
 BufStream::BufStream(size_t size) : _vec(size)
@@ -15,20 +18,20 @@ size_t BufStream::Capacity() const
 
 void BufStream::FillGap()
 {
-    auto readableSize = ReadableSize();
+    auto readableSize = Length();
     if (Pos() > 2 * readableSize)
     {
-        std::copy(_vec.begin() + Pos(), _vec.begin() + Length(), _vec.begin());
-        SetPos(0);
-        SetLength(readableSize);
+        std::copy(_vec.begin() + _readIndex, _vec.begin() + _writeIndex, _vec.begin());
+        _writeIndex -= _readIndex;
+        _readIndex = 0;
     }
 }
 
 void BufStream::AutoResize(size_t len)
 {
-    if (Length() + len >= Capacity())
+    if (_writeIndex + len >= Capacity())
     {
-        _vec.resize(3 * Length() / 2);
+        _vec.resize(3 * Capacity() / 2);
     }
 }
 
@@ -47,9 +50,8 @@ void BufStream::Write(char *bytes, size_t len)
 void BufStream::Write(std::byte *bytes, size_t len)
 {
     EnsureCapacity(len);
-    auto end = Length();
-    SetLength(end + len);
-    std::copy(bytes, bytes + len, _vec.begin() + end);
+    std::copy(bytes, bytes + len, _vec.begin() + _writeIndex);
+    _writeIndex += len;
 }
 
 int BufStream::Read(char *bytes, size_t len)
@@ -60,11 +62,11 @@ int BufStream::Read(char *bytes, size_t len)
 
 int BufStream::Read(std::byte *bytes, size_t len)
 {
-    auto targetEnd = Pos() + len;
-    targetEnd = std::min(targetEnd, Length());
-    std::copy(_vec.begin() + Pos(), _vec.begin() + targetEnd, bytes);
-    auto res = targetEnd - Pos();
-    SetPos(targetEnd);
+    auto targetEnd = _readIndex + len;
+    targetEnd = std::min(targetEnd, _writeIndex);
+    std::copy(_vec.begin() + _readIndex, _vec.begin() + targetEnd, bytes);
+    auto res = targetEnd - _readIndex;
+    _readIndex = targetEnd;
     return res;
 }
 
@@ -81,12 +83,12 @@ void BufStream::SetPos(size_t pos)
 
 size_t BufStream::Length() const
 {
-    return _writeIndex;
+    return _writeIndex - _readIndex;
 }
 
-void BufStream::SetLength(size_t pos)
+void BufStream::SetLength(size_t len)
 {
-    _writeIndex = pos;
+    _writeIndex = _readIndex + len;
 }
 
 bool BufStream::HaveReadableData()
@@ -94,30 +96,25 @@ bool BufStream::HaveReadableData()
     return _writeIndex > _readIndex;
 }
 
-size_t BufStream::ReadableSize()
-{
-    auto res = HaveReadableData() ? _writeIndex - _readIndex : 0;
-    return res;
-}
-
 void BufStream::Clear()
 {
     _readIndex = 0;
+    _writeIndex = 0;
 }
 
-thread_local BufStream BufStream::commonBufStream(65536);
+thread_local char BufStream::commonBufStream[65536];
 std::byte *BufStream::GetByteArray()
 {
-    return &*_vec.begin();
+    return &*(_vec.begin() + _readIndex);
 }
 
-ssize_t BufStream::ReadByFd(int fd)
+ssize_t BufStream::ReadFromFd(int fd)
 {
     struct iovec vec[2];
-    auto writeBytes = Capacity() - Length();
+    auto writeBytes = Capacity() - _writeIndex;
     vec[0].iov_base = GetByteArray() + Length();
     vec[0].iov_len = writeBytes;
-    auto commonBufArray = BufStream::commonBufStream.GetByteArray();
+    auto commonBufArray = BufStream::commonBufStream;
     vec[1].iov_base = commonBufArray;
     vec[1].iov_len = sizeof(commonBufArray);
     auto count = writeBytes < sizeof(commonBufArray) ? 2 : 1;
@@ -128,12 +125,21 @@ ssize_t BufStream::ReadByFd(int fd)
     }
     else if (readCount < writeBytes)
     {
-        SetPos(Length() + readCount);
+        _writeIndex += readCount;
     }
     else
     {
-        SetPos(Capacity());
+        _writeIndex = Capacity();
         Write(commonBufArray, readCount - writeBytes);
     }
     return readCount;
+}
+ssize_t BufStream::WriteToFd(int fd)
+{
+    auto n = ::write(fd, GetByteArray(), Length());
+    if (n > 0)
+    {
+        _readIndex += n;
+    }
+    return n;
 }

@@ -87,6 +87,22 @@ void EventLoop::HandleWaitingFuncs()
         it();
     }
 }
+void EventLoop::UpdateEventHandlerByFd(int fd)
+{
+    if (auto it = eventHanderDict.find(fd); it != eventHanderDict.end())
+    {
+        struct epoll_event event;
+        bzero(&event, sizeof(event));
+        event.data.fd = fd;
+        event.events |= it->second->GetEnabledEventType();
+
+        if (auto res = epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event); res == -1)
+        {
+            ErrorUtility::LogError(SocketError::EpollAdd);
+            return;
+        }
+    }
+}
 
 void EventLoop::RegisterEventHandler(std::shared_ptr<EventHandler> handler, int fd, bool enable)
 {

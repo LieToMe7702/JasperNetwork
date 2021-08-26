@@ -7,7 +7,8 @@ namespace squid
 class BufStream
 {
   public:
-    ssize_t ReadByFd(int fd);
+    ssize_t ReadFromFd(int fd);
+    ssize_t WriteToFd(int fd);
     BufStream(size_t size = 1024);
 
     size_t Capacity() const;
@@ -19,7 +20,6 @@ class BufStream
     size_t Pos() const;
     size_t Length() const;
     bool HaveReadableData();
-    size_t ReadableSize();
     void Clear();
     std::byte *GetByteArray();
 
@@ -31,6 +31,6 @@ class BufStream
     void SetLength(size_t len);
     void FillGap();
     void AutoResize(size_t len);
-    thread_local static BufStream commonBufStream;
+    thread_local static char commonBufStream[];
 };
 } // namespace squid
