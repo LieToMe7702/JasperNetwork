@@ -18,7 +18,7 @@ class TcpServer /*: public TcpService*/
   public:
     void Run();
     void Bind(int port);
-    void SetSocketOption(int option, bool enable);
+    void SetSocketOption(int fd, int option, bool enable);
     ~TcpServer();
     TcpServer(int threadCount = 0);
 

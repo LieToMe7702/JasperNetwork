@@ -137,15 +137,7 @@ ssize_t BufStream::ReadFromFd(int fd)
 }
 ssize_t BufStream::WriteToFd(int fd)
 {
-    std::string test{"<html>\
-<head><title>这是我的第一个html</title></head>\
-<body>\
-Hello World\
-</body>\
-</html>\
-"};
-    // auto n = ::write(fd, GetByteArray(), Length());
-    auto n = ::write(fd, test.c_str(), test.size());
+    auto n = ::write(fd, GetByteArray(), Length());
     if (n > 0)
     {
         _readIndex += n;

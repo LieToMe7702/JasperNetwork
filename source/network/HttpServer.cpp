@@ -8,13 +8,7 @@ HttpServer::HttpServer(int threadCount) : _server(threadCount)
 }
 void HttpServer::OnMessageReceive(Connection &connection, BufStream &stream)
 {
-    std::string test{"<html>\
-<head><title>这是我的第一个html</title></head>\
-<body>\
-Hello World\
-</body>\
-</html>\
-"};
+    std::string test{"HTTP/1.1 400 Bad Request\r\n\r\n"};
     connection.Send(test.c_str(), test.length());
     connection.Close();
 }

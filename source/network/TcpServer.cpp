@@ -31,13 +31,14 @@ void squid::TcpServer::Run()
     fmt::print("Begin Run\n");
     baseEventLoop->Loop();
 }
-void squid::TcpServer::SetSocketOption(int option, bool enable)
+void squid::TcpServer::SetSocketOption(int fd, int option, bool enable)
 {
-    if (listenFd == -1)
+    if (fd == -1)
     {
         return;
     }
-    setsockopt(listenFd, SOL_SOCKET, option, &enable, sizeof(enable));
+    auto val = enable ? 1 : 0;
+    setsockopt(fd, SOL_SOCKET, option, &enable, sizeof(enable));
 }
 void squid::TcpServer::Bind(int port)
 {
@@ -61,8 +62,8 @@ void squid::TcpServer::Bind(int port)
         ErrorUtility::LogError(SocketError::CreateSocket);
         return;
     }
-    SetSocketOption(listenFd, SO_REUSEPORT);
-    SetSocketOption(listenFd, SO_REUSEADDR);
+    SetSocketOption(listenFd, SO_REUSEPORT, true);
+    SetSocketOption(listenFd, SO_REUSEADDR, true);
     if (tmp = bind(listenFd, res->ai_addr, res->ai_addrlen); tmp != 0)
     {
         ErrorUtility::LogError(SocketError::BindSocket);
@@ -113,10 +114,8 @@ void TcpServer::BuildNewConnection(int fd)
     {
         connection->RegisterMessageReceiveEvent(it);
     }
-    for (auto &it : _connectCloseEvents)
-    {
-        connection->RegisterCloseEvent(it);
-    }
+    connection->RegisterCloseEvent(std::bind(&TcpServer::OnConnectionClose, this, std::placeholders::_1));
+
     connectionMap[connFd] = connection;
     OnConnectionAccept(*connection);
     connection->RegisterInLoop();

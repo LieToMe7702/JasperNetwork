@@ -18,6 +18,7 @@ class Connection /*: public TcpService*/
 {
   public:
     Connection(sockaddr_in &sockAddr, int fd, std::shared_ptr<EventLoop>);
+    ~Connection();
     void OnMessageReceiveFd(int fd);
     void OnMessageReceive(BufStream &stream);
     void OnMessageSendFd(int fd);

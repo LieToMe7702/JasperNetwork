@@ -1,9 +1,11 @@
 #include "Connection.h"
 #include "channel/EventType.h"
 #include "network/TcpService.h"
+#include "utility/utility.h"
 #include <algorithm>
 #include <functional>
 #include <string_view>
+
 using namespace squid;
 
 Connection::Connection(sockaddr_in &sockAddr, int fd, std::shared_ptr<EventLoop> loop)
@@ -15,6 +17,11 @@ Connection::Connection(sockaddr_in &sockAddr, int fd, std::shared_ptr<EventLoop>
     _ioHandler->RegisterEvent(std::bind(&Connection::OnCloseFd, this, std::placeholders::_1), EventType::Close);
     _ioHandler->EnableReadEvent(true);
 }
+Connection::~Connection()
+{
+    CommonUtility::CloseFd(_fd);
+}
+
 void Connection::OnCloseFd(int fd)
 {
     _runLoop->RunOnceInLoop([this, fd]() {
@@ -28,8 +35,15 @@ void Connection::OnCloseFd(int fd)
 }
 void Connection::OnMessageReceiveFd(int fd)
 {
-    _inputStream.ReadFromFd(fd);
-    OnMessageReceive(_inputStream);
+    auto size = _inputStream.ReadFromFd(fd);
+    if (size == 0)
+    {
+        OnCloseFd(fd);
+    }
+    else
+    {
+        OnMessageReceive(_inputStream);
+    }
 }
 void Connection::OnMessageReceive(BufStream &stream)
 {
@@ -84,6 +98,8 @@ void Connection::Send(const char *data, size_t len)
     if (_runLoop->IsInLoopThread())
     {
         _outputStream.Write(data, len);
+        //_outputStream.WriteToFd(_fd);
+        // Close();
         _ioHandler->EnableWriteEvent(true);
         _runLoop->RegisterEventHandler(_ioHandler, _fd);
     }
@@ -110,7 +126,7 @@ void Connection::Close()
 }
 void Connection::CloseWrite()
 {
-    if (_ioHandler->IsWrite())
+    if (!_ioHandler->IsWrite())
     {
         ::shutdown(_fd, SHUT_WR);
     }
