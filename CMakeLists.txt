@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8.0)
-project(squid VERSION 0.1.0 LANGUAGES CXX) 
+project(JasperNetwork VERSION 0.1.0 LANGUAGES CXX) 
 set(CMAKE_CXX_STANDARD 17)
 
 include(CTest)
@@ -13,9 +13,9 @@ aux_source_directory(./source/network DIR_SRCS)
 aux_source_directory(./source/error DIR_SRCS)
 aux_source_directory(./source DIR_SRCS)
 add_subdirectory(./source/dependencies/fmt EXCLUDE_FROM_ALL)
-add_executable(squid ${DIR_SRCS})
-target_compile_features(squid PUBLIC cxx_std_17)
-TARGET_LINK_LIBRARIES(squid
+add_executable(JasperNetwork ${DIR_SRCS})
+target_compile_features(JasperNetwork PUBLIC cxx_std_17)
+TARGET_LINK_LIBRARIES(JasperNetwork
 pthread fmt-header-only
 )
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
