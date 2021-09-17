@@ -112,12 +112,11 @@ std::byte *BufStream::GetByteArray()
 ssize_t BufStream::ReadFromFd(int fd)
 {
     struct iovec vec[2];
-    char extrabuf[65536];
     auto writeBytes = Capacity() - _writeIndex;
     vec[0].iov_base = GetByteArray() + Length();
     vec[0].iov_len = writeBytes;
-    vec[1].iov_base = extrabuf;
-    vec[1].iov_len = sizeof(extrabuf);
+    vec[1].iov_base = commonBufStream;
+    vec[1].iov_len = sizeof(commonBufStream);
     auto count = writeBytes < vec[1].iov_len ? 2 : 1;
     auto readCount = readv(fd, vec, count);
     if (readCount < 0)
@@ -131,7 +130,7 @@ ssize_t BufStream::ReadFromFd(int fd)
     else
     {
         _writeIndex = Capacity();
-        Write(extrabuf, readCount - writeBytes);
+        Write(commonBufStream, readCount - writeBytes);
     }
     return readCount;
 }

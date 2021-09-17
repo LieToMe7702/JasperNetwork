@@ -40,7 +40,7 @@ void Connection::OnMessageReceiveFd(int fd)
     {
         OnCloseFd(fd);
     }
-    else
+    else if (size > 0)
     {
         OnMessageReceive(_inputStream);
     }
@@ -58,6 +58,10 @@ void Connection::RegisterInLoop()
 }
 void Connection::OnMessageSendFd(int fd)
 {
+    if (_connectionState == ConnectionState::Disconnected)
+    {
+        return;
+    }
     auto n = _outputStream.WriteToFd(fd);
     if (n > 0)
     {

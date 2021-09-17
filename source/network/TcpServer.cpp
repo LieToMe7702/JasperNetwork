@@ -38,7 +38,7 @@ void squid::TcpServer::SetSocketOption(int fd, int option, bool enable)
         return;
     }
     auto val = enable ? 1 : 0;
-    setsockopt(fd, SOL_SOCKET, option, &enable, sizeof(enable));
+    setsockopt(fd, SOL_SOCKET, option, &val, sizeof(val));
 }
 void squid::TcpServer::Bind(int port)
 {
@@ -97,11 +97,10 @@ void TcpServer::BuildNewConnection(int fd)
 {
     struct sockaddr_in clientAddr;
     auto size = sizeof(clientAddr);
-    auto connFd =
-        accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), reinterpret_cast<socklen_t *>(&size));
+    auto connFd = accept4(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr),
+                          reinterpret_cast<socklen_t *>(&size), SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (connFd == -1)
     {
-        ErrorUtility::LogError(SocketError::AcceptSocket);
         return;
     }
     auto loop = _eventLoopThreadPool.GetLoop();
