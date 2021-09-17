@@ -17,7 +17,7 @@ template <typename T> class BlockQueue
     void Put(const T &&x)
     {
         std::unique_lock guard(lock);
-        internalQueue.emplace(std::forward(x));
+        internalQueue.emplace(std::move(x));
         notEmpty.notify_one();
     }
     T Take()

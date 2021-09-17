@@ -98,8 +98,6 @@ void Connection::Send(const char *data, size_t len)
     if (_runLoop->IsInLoopThread())
     {
         _outputStream.Write(data, len);
-        //_outputStream.WriteToFd(_fd);
-        // Close();
         _ioHandler->EnableWriteEvent(true);
         _runLoop->RegisterEventHandler(_ioHandler, _fd);
     }
