@@ -17,7 +17,7 @@ void ThreadPool::Put(const ThreadFuncType &func)
 }
 void ThreadPool::Put(ThreadFuncType &&func)
 {
-    blockQueue.Put(func);
+    blockQueue.Put(std::move(func));
 }
 
 void ThreadPool::RunInThread()
